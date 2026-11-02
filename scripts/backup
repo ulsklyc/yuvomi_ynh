@@ -16,19 +16,23 @@ ynh_print_info "Copying the database while $app is stopped..."
 # nor the sqlite3 CLI gives a reliable snapshot. Stopping for the copy takes a
 # few seconds; YunoHost itself only copies the declared files after this script.
 snapshot_dir=$(_yuvomi_snapshot_dir)
-ynh_safe_rm "$snapshot_dir"
-mkdir -p "$snapshot_dir"
 
 was_active=0
 if systemctl is-active --quiet "$app"; then
     was_active=1
     ynh_systemctl --service="$app" --action="stop"
 fi
-cp -a "$data_dir/db/." "$snapshot_dir/"
+
+# $data_dir belongs to the app user, so root never writes into it: a symlink
+# planted there would otherwise send root's copy (and a chown) anywhere. The
+# copy runs with the app's own rights, after the service is stopped.
+ynh_exec_as_app rm -rf -- "$snapshot_dir"
+ynh_exec_as_app mkdir -m 700 -- "$snapshot_dir"
+ynh_exec_as_app cp -a --no-dereference -- "$data_dir/db/." "$snapshot_dir/"
+
 if [ "$was_active" -eq 1 ]; then
     ynh_systemctl --service="$app" --action="start" --wait_until="Server running on port" --log_path="/var/log/$app/$app.log"
 fi
-chown -R "$app:$app" "$snapshot_dir"
 
 #=================================================
 # DECLARE DATA AND CONF FILES TO BACKUP
