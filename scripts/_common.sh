@@ -16,9 +16,12 @@ _yuvomi_install_dependencies() {
 
     ynh_safe_rm "$install_dir/.npm"
     ynh_safe_rm "$install_dir/.cache"
-    for path in docs test deploy templates tools coverage backups install.sh \
-                docker-compose.yml podman-compose.yml nginx.conf.example ca_profile.xml; do
-        ynh_safe_rm "$install_dir/$path"
+    # Not "path": that is YunoHost's global for the app's URL path, and the
+    # nginx template reads it right after this function returns
+    local unused
+    for unused in docs test deploy templates tools coverage backups install.sh \
+                  docker-compose.yml podman-compose.yml nginx.conf.example ca_profile.xml; do
+        ynh_safe_rm "$install_dir/$unused"
     done
 }
 
