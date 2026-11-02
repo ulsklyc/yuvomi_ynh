@@ -1,0 +1,96 @@
+#!/bin/bash
+
+#=================================================
+# IMPORT GENERIC HELPERS
+#=================================================
+
+source _common.sh
+source /usr/share/yunohost/helpers
+
+#=================================================
+# APP INITIAL CONFIGURATION
+#=================================================
+
+# Both secrets live in the app settings, so upgrades rewrite .env with the same
+# values and every YunoHost backup of the app carries the database key
+session_secret=$(ynh_string_random --length=64)
+ynh_app_setting_set --key=session_secret --value="$session_secret"
+
+db_encryption_key=$(ynh_string_random --length=64)
+ynh_app_setting_set --key=db_encryption_key --value="$db_encryption_key"
+
+#=================================================
+# DOWNLOAD, CHECK AND UNPACK SOURCE
+#=================================================
+ynh_script_progression "Setting up source files..."
+
+ynh_setup_source --dest_dir="$install_dir"
+
+chmod -R o-rwx "$install_dir"
+chown -R "$app:www-data" "$install_dir"
+
+#=================================================
+# APP INITIAL CONFIGURATION
+#=================================================
+ynh_script_progression "Adding $app's configuration files..."
+
+ynh_config_add --template=".env" --destination="$install_dir/.env"
+chmod 400 "$install_dir/.env"
+chown "$app:$app" "$install_dir/.env"
+
+#=================================================
+# BUILD
+#=================================================
+ynh_script_progression "Installing $app dependencies..."
+
+_yuvomi_install_dependencies
+
+chown -R "$app:$app" "$data_dir"
+chmod 750 "$data_dir"
+
+#=================================================
+# SYSTEM CONFIGURATION
+#=================================================
+ynh_script_progression "Adding system configurations related to $app..."
+
+ynh_config_add_nginx
+
+ynh_config_add_systemd
+yunohost service add "$app" --description="Family planner" --log="/var/log/$app/$app.log"
+
+ynh_config_add_logrotate
+
+#=================================================
+# START SYSTEMD SERVICE
+#=================================================
+ynh_script_progression "Starting $app's systemd service..."
+
+ynh_systemctl --service="$app" --action="start" --wait_until="Server running on port" --log_path="/var/log/$app/$app.log"
+
+#=================================================
+# CREATE THE ADMINISTRATOR
+#=================================================
+ynh_script_progression "Creating the administrator account..."
+
+# Until the first account exists, anyone reaching the app could finish the
+# setup and become its administrator. Creating it here closes that window.
+display_name=$(ynh_user_get_info --username="$admin" --key=fullname 2>/dev/null || true)
+[ -n "$display_name" ] || display_name="$admin"
+
+setup_args=(--data-urlencode "username=$admin"
+            --data-urlencode "display_name=$display_name"
+            --data-urlencode "password=$password")
+# Day keys follow the household time zone, so take the server's instead of UTC
+if [ -s /etc/timezone ]; then
+    setup_args+=(--data-urlencode "timezone=$(cat /etc/timezone)")
+fi
+
+curl --silent --show-error --fail-with-body --max-time 30 \
+    "${setup_args[@]}" "http://127.0.0.1:$port/api/v1/auth/setup" >/dev/null \
+    || ynh_die "Yuvomi refused to create the administrator account, see /var/log/$app/$app.log"
+
+#=================================================
+# END OF SCRIPT
+#=================================================
+
+ynh_script_progression "Installation of $app completed"

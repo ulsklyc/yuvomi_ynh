@@ -1,0 +1,55 @@
+#!/bin/bash
+
+#=================================================
+# IMPORT GENERIC HELPERS
+#=================================================
+
+source ../settings/scripts/_common.sh
+source /usr/share/yunohost/helpers
+
+#=================================================
+# CONSISTENT DATABASE COPY
+#=================================================
+ynh_print_info "Copying the database while $app is stopped..."
+
+# The database runs in WAL mode and is encrypted, so neither a live file copy
+# nor the sqlite3 CLI gives a reliable snapshot. Stopping for the copy takes a
+# few seconds; YunoHost itself only copies the declared files after this script.
+snapshot_dir=$(_yuvomi_snapshot_dir)
+ynh_safe_rm "$snapshot_dir"
+mkdir -p "$snapshot_dir"
+
+was_active=0
+if systemctl is-active --quiet "$app"; then
+    was_active=1
+    ynh_systemctl --service="$app" --action="stop"
+fi
+cp -a "$data_dir/db/." "$snapshot_dir/"
+if [ "$was_active" -eq 1 ]; then
+    ynh_systemctl --service="$app" --action="start" --wait_until="Server running on port" --log_path="/var/log/$app/$app.log"
+fi
+chown -R "$app:$app" "$snapshot_dir"
+
+#=================================================
+# DECLARE DATA AND CONF FILES TO BACKUP
+#=================================================
+ynh_print_info "Declaring files to be backed up..."
+
+ynh_backup "$install_dir"
+
+# The live database folder is left out on purpose, the snapshot replaces it
+ynh_backup "$snapshot_dir"
+ynh_backup "$data_dir/backups"
+ynh_backup "$data_dir/documents"
+ynh_backup "$data_dir/modules"
+
+ynh_backup "/etc/nginx/conf.d/$domain.d/$app.conf"
+ynh_backup "/etc/systemd/system/$app.service"
+ynh_backup "/etc/logrotate.d/$app"
+ynh_backup "/var/log/$app/"
+
+#=================================================
+# END OF SCRIPT
+#=================================================
+
+ynh_print_info "Backup script completed for $app. (YunoHost will then actually copy those files to the archive)."

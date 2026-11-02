@@ -1,0 +1,82 @@
+#:schema https://raw.githubusercontent.com/YunoHost/apps/main/schemas/manifest.v2.schema.json
+
+packaging_format = 2
+
+id = "yuvomi"
+name = "Yuvomi"
+description.en = "Privacy-focused family planner: calendar, tasks, shopping, meals, budget and more"
+description.de = "Datenschutzfreundlicher Familienplaner: Kalender, Aufgaben, Einkauf, Essen, Budget und mehr"
+description.fr = "Planificateur familial respectueux de la vie privée : agenda, tâches, courses, repas, budget"
+
+version = "2.83.0~ynh1"
+
+maintainers = ["ulsklyc"]
+
+[upstream]
+license = "MIT"
+website = "https://yuvomi.cloud/"
+admindoc = "https://github.com/ulsklyc/yuvomi/blob/main/docs/installation.md"
+code = "https://github.com/ulsklyc/yuvomi"
+
+[integration]
+yunohost = ">= 12.1.17"
+helpers_version = "2.1"
+# better-sqlite3-multiple-ciphers ships prebuilt binaries for linux x64 and arm64 only
+architectures = ["amd64", "arm64"]
+multi_instance = true
+# Yuvomi has its own accounts (and optional OIDC), no LDAP and no SSOwat header login
+ldap = false
+sso = false
+disk = "600M"
+ram.build = "600M"
+ram.runtime = "200M"
+
+[install]
+    [install.domain]
+    # Yuvomi cannot run under a sub path yet, so it takes a whole (sub)domain
+    type = "domain"
+
+    [install.init_main_permission]
+    help.en = "Yuvomi has its own login. Keep it public (visitors) so the installable app, calendar feeds and API tokens keep working outside the YunoHost portal."
+    help.de = "Yuvomi hat eine eigene Anmeldung. Öffentlich (visitors) lassen, damit die installierbare App, Kalender-Feeds und API-Tokens auch außerhalb des YunoHost-Portals funktionieren."
+    help.fr = "Yuvomi a sa propre connexion. Laissez-la publique (visitors) pour que l'application installable, les flux d'agenda et les jetons d'API fonctionnent hors du portail YunoHost."
+    type = "group"
+    default = "visitors"
+
+    # The install script creates this account right away, so the open first-run
+    # setup page never faces the internet
+    [install.admin]
+    type = "user"
+
+    [install.password]
+    help.en = "Password of the Yuvomi administrator account, at least 8 characters. It is separate from the YunoHost password."
+    help.de = "Passwort des Yuvomi-Administratorkontos, mindestens 8 Zeichen. Es ist unabhängig vom YunoHost-Passwort."
+    help.fr = "Mot de passe du compte administrateur de Yuvomi, au moins 8 caractères. Il est distinct du mot de passe YunoHost."
+    type = "password"
+
+[resources]
+    [resources.sources]
+        [resources.sources.main]
+        url = "https://github.com/ulsklyc/yuvomi/archive/refs/tags/v2.83.0.tar.gz"
+        sha256 = "735013ccf57d97fea9e0cda357ae1492acf9890ba4c9b22538e35257dc6fb248"
+        autoupdate.strategy = "latest_github_release"
+
+    [resources.system_user]
+
+    [resources.install_dir]
+
+    [resources.data_dir]
+    subdirs = ["db", "backups", "documents", "modules"]
+
+    [resources.permissions]
+    main.url = "/"
+
+    [resources.ports]
+    main.default = 3000
+
+    [resources.apt]
+    # Fallback toolchain, only used when npm finds no prebuilt binary for a native module
+    packages = "python3, make, g++"
+
+    [resources.nodejs]
+    version = "24"
