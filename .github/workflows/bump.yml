@@ -37,31 +37,41 @@ jobs:
           fi
 
           branch="bump/$new"
-          if git ls-remote --exit-code --heads origin "$branch" >/dev/null; then
-            echo "$branch exists already, see its pull request."
+          title="chore: bump Yuvomi to $new"
+          # Any open bump to this version counts, also one opened by hand.
+          if gh pr list --state open --json title --jq '.[].title' | grep -qxF "$title"; then
+            echo "A pull request \"$title\" is open already."
             exit 0
           fi
 
-          url="https://github.com/ulsklyc/yuvomi/archive/refs/tags/$tag.tar.gz"
-          # Into a file first: in a pipe a failed or cut-off download would
-          # still hash, and the pull request would carry that wrong sha256.
-          curl -fsSL --retry 3 -o "$RUNNER_TEMP/source.tar.gz" "$url"
-          gzip -t "$RUNNER_TEMP/source.tar.gz"
-          sha=$(sha256sum "$RUNNER_TEMP/source.tar.gz" | cut -d' ' -f1)
-          sed -i -E \
-            -e "s|^version = \"[^\"]+\"$|version = \"$new~ynh1\"|" \
-            -e "s|^( *url = \"https://github.com/ulsklyc/yuvomi/archive/refs/tags/)v[0-9.]+(\.tar\.gz\")$|\1$tag\2|" \
-            -e "s|^( *sha256 = \")[0-9a-f]{64}(\")$|\1$sha\2|" \
-            manifest.toml
-          # Version, URL and hash: exactly three lines, or the manifest changed shape.
-          [ "$(git diff --numstat manifest.toml | cut -f1)" = 3 ] || { git diff; echo "Expected 3 changed lines"; exit 1; }
+          if git ls-remote --exit-code --heads origin "$branch" >/dev/null; then
+            # Pushed by an earlier run that could not open its pull request.
+            git fetch origin "$branch"
+            git switch "$branch"
+            sha=$(sed -nE 's/^ *sha256 = "([0-9a-f]{64})"$/\1/p' manifest.toml)
+          else
+            url="https://github.com/ulsklyc/yuvomi/archive/refs/tags/$tag.tar.gz"
+            # Into a file first: in a pipe a failed or cut-off download would
+            # still hash, and the pull request would carry that wrong sha256.
+            curl -fsSL --retry 3 -o "$RUNNER_TEMP/source.tar.gz" "$url"
+            gzip -t "$RUNNER_TEMP/source.tar.gz"
+            sha=$(sha256sum "$RUNNER_TEMP/source.tar.gz" | cut -d' ' -f1)
+            sed -i -E \
+              -e "s|^version = \"[^\"]+\"$|version = \"$new~ynh1\"|" \
+              -e "s|^( *url = \"https://github.com/ulsklyc/yuvomi/archive/refs/tags/)v[0-9.]+(\.tar\.gz\")$|\1$tag\2|" \
+              -e "s|^( *sha256 = \")[0-9a-f]{64}(\")$|\1$sha\2|" \
+              manifest.toml
+            # Version, URL and hash: exactly three lines, or the manifest changed shape.
+            [ "$(git diff --numstat manifest.toml | cut -f1)" = 3 ] || { git diff; echo "Expected 3 changed lines"; exit 1; }
 
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git switch -c "$branch"
-          git commit -am "chore: bump Yuvomi to $new"
-          git push -u origin "$branch"
-          gh pr create --base main --head "$branch" --title "chore: bump Yuvomi to $new" --body "$(cat <<BODY
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git switch -c "$branch"
+            git commit -am "$title"
+            git push -u origin "$branch"
+          fi
+
+          gh pr create --base main --head "$branch" --title "$title" --body "$(cat <<BODY
           Bumps the package from Yuvomi $current to [$new](https://github.com/ulsklyc/yuvomi/releases/tag/$tag): version \`$new~ynh1\`, tarball URL, sha256 \`$sha\`.
 
           Before merging:
