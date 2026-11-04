@@ -1,0 +1,68 @@
+name: Lint
+
+# Runs YunoHost's package_linter the way its README describes it: clone it,
+# install its requirements, ./package_linter.py <app>. The job fails on errors
+# and critical findings, not on warnings - with one exception: the "Catalog
+# infos" checks (AppCatalog.*) report that the app is not in the YunoHost
+# catalog yet, which no change to this repository can fix. They stay in the
+# log and as a notice until the package is in the catalog; then this
+# exception goes.
+#
+# The Bump workflow starts this one on its branch (workflow_dispatch), since
+# its pull requests are opened with GITHUB_TOKEN and start no pull_request run.
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package-linter:
+    name: package-linter
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          path: yuvomi_ynh
+          persist-credentials: false
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Install package_linter
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --quiet --depth 1 https://github.com/YunoHost/package_linter.git linter
+          echo "package_linter at $(git -C linter rev-parse HEAD)"
+          pip install --quiet -r linter/requirements.txt
+
+      - name: Run package_linter
+        shell: bash
+        working-directory: linter
+        run: |
+          set -euo pipefail
+          # The readable report for the log. Its exit code is 1 on any error,
+          # the catalog ones included, so the verdict comes from --json below.
+          ./package_linter.py ../yuvomi_ynh || true
+          ./package_linter.py --json ../yuvomi_ynh > "$RUNNER_TEMP/lint.json"
+
+          for level in critical error warning; do
+            jq -r --arg level "$level" '.[$level][] | "\($level): \(.)"' "$RUNNER_TEMP/lint.json"
+          done
+
+          catalog=$(jq -r '(.critical + .error)[] | select(startswith("AppCatalog."))' "$RUNNER_TEMP/lint.json")
+          if [ -n "$catalog" ]; then
+            echo "::notice title=package_linter::Not counted while the app is outside the YunoHost catalog: $(echo $catalog)"
+          fi
+          failing=$(jq -r '(.critical + .error)[] | select(startswith("AppCatalog.") | not)' "$RUNNER_TEMP/lint.json")
+          if [ -n "$failing" ]; then
+            for name in $failing; do echo "::error title=package_linter::$name"; done
+            exit 1
+          fi

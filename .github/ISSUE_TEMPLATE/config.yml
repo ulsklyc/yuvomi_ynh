@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Bug in Yuvomi itself
+    url: https://github.com/ulsklyc/yuvomi/issues/new/choose
+    about: Something in the app is wrong (a module, the login, sync), not the YunoHost install around it.
+  - name: Question or idea
+    url: https://github.com/ulsklyc/yuvomi/discussions
+    about: Questions about Yuvomi, also about running it on YunoHost, and feature ideas.

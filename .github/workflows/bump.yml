@@ -1,8 +1,9 @@
 name: Bump Yuvomi
 
 # Opens one pull request when Yuvomi has a release newer than manifest.toml:
-# new version (~ynh1), tarball URL and its sha256. Merging stays a person's
-# call, after reading the release notes and one install or upgrade on YunoHost.
+# new version (~ynh1), tarball URL and its sha256, plus the upstream diff of
+# the files the package depends on. Merging stays a person's call, after
+# reading the release notes and one install or upgrade on YunoHost.
 # Once the package is in the YunoHost catalog, YunoHost's own autoupdate bot
 # (autoupdate.strategy in manifest.toml) does this, and this workflow goes.
 
@@ -12,6 +13,8 @@ on:
   workflow_dispatch:
 
 permissions:
+  # actions: start the Lint workflow on the new branch (see the last step)
+  actions: write
   contents: write
   pull-requests: write
 
@@ -44,6 +47,9 @@ jobs:
             exit 0
           fi
 
+          # Before any switch: the script comes from main
+          .github/scripts/upstream-diff.sh "v$current" "$tag" > "$RUNNER_TEMP/upstream.md"
+
           if git ls-remote --exit-code --heads origin "$branch" >/dev/null; then
             # Pushed by an earlier run that could not open its pull request.
             git fetch origin "$branch"
@@ -71,11 +77,18 @@ jobs:
             git push -u origin "$branch"
           fi
 
-          gh pr create --base main --head "$branch" --title "$title" --body "$(cat <<BODY
+          body="$RUNNER_TEMP/body.md"
+          cat > "$body" <<BODY
           Bumps the package from Yuvomi $current to [$new](https://github.com/ulsklyc/yuvomi/releases/tag/$tag): version \`$new~ynh1\`, tarball URL, sha256 \`$sha\`.
 
           Before merging:
           - Read the release notes of every Yuvomi release since $current for changes to environment variables, secrets, Node or the files the server needs (\`scripts/_common.sh\` mirrors the upstream \`.dockerignore\`).
           - Install or upgrade once on a YunoHost server.
+
           BODY
-          )"
+          cat "$RUNNER_TEMP/upstream.md" >> "$body"
+          gh pr create --base main --head "$branch" --title "$title" --body-file "$body"
+
+          # A pull request opened with GITHUB_TOKEN starts no pull_request
+          # workflows, so the linter is started by hand on the branch
+          gh workflow run lint.yml --ref "$branch"

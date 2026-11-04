@@ -33,6 +33,9 @@ conf/systemd.service         Hardened service
 doc/                         DESCRIPTION, PRE_INSTALL and ADMIN texts shown by YunoHost
 tests.toml                   package_check scenarios
 .github/workflows/bump.yml   Daily: opens a pull request for a new Yuvomi release
+.github/scripts/             The upstream diff the bump pull request carries
+.github/workflows/lint.yml   YunoHost's package_linter on every pull request and on main
+.github/dependabot.yml       Weekly updates of the GitHub Actions
 ```
 
 ## Decisions
@@ -54,6 +57,9 @@ tests.toml                   package_check scenarios
 
 ## Testing
 
+- **package_linter** - [YunoHost's linter](https://github.com/YunoHost/package_linter) runs as the
+  `package-linter` check. It fails on errors, not on warnings; the catalog checks are not counted
+  while the package is outside the YunoHost catalog.
 - **On YunoHost** - install, upgrade from the previous version, backup and restore on a YunoHost
   12.1.17+ server before merging a bump.
 - **package_check** - [YunoHost's test suite](https://github.com/YunoHost/package_check) runs the
@@ -68,8 +74,10 @@ Same rules as [Yuvomi](https://github.com/ulsklyc/yuvomi/blob/main/CONTRIBUTING.
   period, max 72 characters.
 - One logical change per pull request; pull requests are squash-merged.
 - **New Yuvomi release** - the Bump workflow opens the pull request with version, tarball URL and
-  sha256. Read the release notes since the last bump for changes to environment variables,
-  secrets, Node or the files the server needs, and test it on YunoHost before merging.
+  sha256, the upstream diff of the files the package depends on (`env-schema.js`, `.dockerignore`,
+  `package.json`, `entrypoint.sh`, `auto-secrets.js`), and starts the linter on it. Read that diff
+  and the release notes since the last bump for changes to environment variables, secrets, Node or
+  the files the server needs, and test it on YunoHost before merging.
 
 ## AI Assistance
 
