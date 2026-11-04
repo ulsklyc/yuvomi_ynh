@@ -1,3 +1,13 @@
 *~
 *.sw[op]
 .DS_Store
+
+# AI tooling (stays local, see CONTRIBUTING.md)
+.claude/
+.codex/
+.agents/
+.github/skills/
+.github/hooks/
+.playwright-mcp/
+AGENTS.md
+CLAUDE.md

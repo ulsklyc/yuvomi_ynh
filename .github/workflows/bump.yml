@@ -1,0 +1,81 @@
+name: Bump Yuvomi
+
+# Opens one pull request when Yuvomi has a release newer than manifest.toml:
+# new version (~ynh1), tarball URL and its sha256. Merging stays a person's
+# call, after reading the release notes and one install or upgrade on YunoHost.
+# Once the package is in the YunoHost catalog, YunoHost's own autoupdate bot
+# (autoupdate.strategy in manifest.toml) does this, and this workflow goes.
+
+on:
+  schedule:
+    - cron: "23 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Bump manifest.toml to the newest Yuvomi release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag=$(gh release view --repo ulsklyc/yuvomi --json tagName --jq .tagName)
+          new=${tag#v}
+          current=$(sed -nE 's/^version = "([0-9.]+)~ynh[0-9]+"$/\1/p' manifest.toml)
+          [ -n "$current" ] || { echo "No version in manifest.toml"; exit 1; }
+          if [ "$(printf '%s\n%s\n' "$current" "$new" | sort -V | tail -1)" = "$current" ]; then
+            echo "manifest.toml is at $current, the newest Yuvomi release is $new."
+            exit 0
+          fi
+
+          branch="bump/$new"
+          title="chore: bump Yuvomi to $new"
+          # Any open bump to this version counts, also one opened by hand.
+          if gh pr list --state open --json title --jq '.[].title' | grep -qxF "$title"; then
+            echo "A pull request \"$title\" is open already."
+            exit 0
+          fi
+
+          if git ls-remote --exit-code --heads origin "$branch" >/dev/null; then
+            # Pushed by an earlier run that could not open its pull request.
+            git fetch origin "$branch"
+            git switch "$branch"
+            sha=$(sed -nE 's/^ *sha256 = "([0-9a-f]{64})"$/\1/p' manifest.toml)
+          else
+            url="https://github.com/ulsklyc/yuvomi/archive/refs/tags/$tag.tar.gz"
+            # Into a file first: in a pipe a failed or cut-off download would
+            # still hash, and the pull request would carry that wrong sha256.
+            curl -fsSL --retry 3 -o "$RUNNER_TEMP/source.tar.gz" "$url"
+            gzip -t "$RUNNER_TEMP/source.tar.gz"
+            sha=$(sha256sum "$RUNNER_TEMP/source.tar.gz" | cut -d' ' -f1)
+            sed -i -E \
+              -e "s|^version = \"[^\"]+\"$|version = \"$new~ynh1\"|" \
+              -e "s|^( *url = \"https://github.com/ulsklyc/yuvomi/archive/refs/tags/)v[0-9.]+(\.tar\.gz\")$|\1$tag\2|" \
+              -e "s|^( *sha256 = \")[0-9a-f]{64}(\")$|\1$sha\2|" \
+              manifest.toml
+            # Version, URL and hash: exactly three lines, or the manifest changed shape.
+            [ "$(git diff --numstat manifest.toml | cut -f1)" = 3 ] || { git diff; echo "Expected 3 changed lines"; exit 1; }
+
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git switch -c "$branch"
+            git commit -am "$title"
+            git push -u origin "$branch"
+          fi
+
+          gh pr create --base main --head "$branch" --title "$title" --body "$(cat <<BODY
+          Bumps the package from Yuvomi $current to [$new](https://github.com/ulsklyc/yuvomi/releases/tag/$tag): version \`$new~ynh1\`, tarball URL, sha256 \`$sha\`.
+
+          Before merging:
+          - Read the release notes of every Yuvomi release since $current for changes to environment variables, secrets, Node or the files the server needs (\`scripts/_common.sh\` mirrors the upstream \`.dockerignore\`).
+          - Install or upgrade once on a YunoHost server.
+          BODY
+          )"
