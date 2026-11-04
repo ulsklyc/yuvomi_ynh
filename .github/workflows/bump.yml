@@ -24,8 +24,9 @@ jobs:
       - name: Bump manifest.toml to the newest Yuvomi release
         env:
           GH_TOKEN: ${{ github.token }}
+        shell: bash
         run: |
-          set -eu
+          set -euo pipefail
           tag=$(gh release view --repo ulsklyc/yuvomi --json tagName --jq .tagName)
           new=${tag#v}
           current=$(sed -nE 's/^version = "([0-9.]+)~ynh[0-9]+"$/\1/p' manifest.toml)
@@ -42,7 +43,11 @@ jobs:
           fi
 
           url="https://github.com/ulsklyc/yuvomi/archive/refs/tags/$tag.tar.gz"
-          sha=$(curl -fsSL "$url" | sha256sum | cut -d' ' -f1)
+          # Into a file first: in a pipe a failed or cut-off download would
+          # still hash, and the pull request would carry that wrong sha256.
+          curl -fsSL --retry 3 -o "$RUNNER_TEMP/source.tar.gz" "$url"
+          gzip -t "$RUNNER_TEMP/source.tar.gz"
+          sha=$(sha256sum "$RUNNER_TEMP/source.tar.gz" | cut -d' ' -f1)
           sed -i -E \
             -e "s|^version = \"[^\"]+\"$|version = \"$new~ynh1\"|" \
             -e "s|^( *url = \"https://github.com/ulsklyc/yuvomi/archive/refs/tags/)v[0-9.]+(\.tar\.gz\")$|\1$tag\2|" \
