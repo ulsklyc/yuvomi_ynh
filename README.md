@@ -14,6 +14,7 @@
     <a href="manifest.toml"><img src="https://img.shields.io/badge/dynamic/toml?url=https%3A%2F%2Fraw.githubusercontent.com%2Fulsklyc%2Fyuvomi_ynh%2Fmain%2Fmanifest.toml&query=%24.version&label=package&style=flat-square&color=6C3AED" alt="Package version"></a>
     <a href="#install"><img src="https://img.shields.io/badge/platforms-amd64%20%7C%20arm64-6C3AED?style=flat-square" alt="Runs on amd64 and arm64"></a>
     <a href="https://yunohost.org/"><img src="https://img.shields.io/badge/YunoHost-12.1.17%2B-6C3AED?style=flat-square" alt="YunoHost 12.1.17 or newer"></a>
+    <a href="https://github.com/ulsklyc/yuvomi_ynh/actions/workflows/lint.yml"><img src="https://img.shields.io/github/actions/workflow/status/ulsklyc/yuvomi_ynh/lint.yml?branch=main&style=flat-square&color=6C3AED&label=lint" alt="Lint status"></a>
     <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-6C3AED?style=flat-square" alt="MIT license"></a>
   </p>
 
