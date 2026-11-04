@@ -1,0 +1,10 @@
+# Only the GitHub Actions of the workflows. The package has no dependencies of
+# its own: Yuvomi's come with the release tarball, Node from YunoHost.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: ci

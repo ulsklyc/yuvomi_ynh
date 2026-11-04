@@ -113,8 +113,9 @@ The package version is the Yuvomi version plus a package revision, e.g. `2.85.0~
 <br>
 
 - **New Yuvomi release** - the [Bump workflow](.github/workflows/bump.yml) checks for a new release
-  every day and opens one pull request with the new version, tarball URL and sha256. Before
-  merging, read the Yuvomi release notes for changes to environment variables, secrets, Node or the
+  every day and opens one pull request with the new version, tarball URL, sha256 and the upstream
+  diff of the files the package depends on. Before merging, read that diff and the Yuvomi release
+  notes for changes to environment variables, secrets, Node or the
   files the server needs, and install or upgrade once on a YunoHost server.
 - **Package changes** - raise the `~ynhN` revision in `manifest.toml`.
 - **Contributing** - constraints, decisions, commit and AI assistance rules are in
@@ -126,8 +127,10 @@ The package version is the Yuvomi version plus a package revision, e.g. `2.85.0~
 
 ## Support
 
-- **The package** (install, upgrade, backups) - [issues in this repository](https://github.com/ulsklyc/yuvomi_ynh/issues)
-- **Yuvomi itself** (features, modules, questions) - [Yuvomi discussions](https://github.com/ulsklyc/yuvomi/discussions)
+- **The package** (install, upgrade, backups) - [issues in this repository](https://github.com/ulsklyc/yuvomi_ynh/issues/new/choose)
+- **A bug in Yuvomi itself** - [Yuvomi issues](https://github.com/ulsklyc/yuvomi/issues/new/choose)
+- **Questions and ideas** - [Yuvomi discussions](https://github.com/ulsklyc/yuvomi/discussions)
+- **Security** - privately, see [SECURITY.md](SECURITY.md)
 
 ---
 
