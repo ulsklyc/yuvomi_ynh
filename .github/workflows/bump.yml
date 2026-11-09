@@ -1,7 +1,8 @@
 name: Bump Yuvomi
 
 # Opens one pull request when Yuvomi has a release newer than manifest.toml:
-# new version (~ynh1), tarball URL and its sha256, plus the upstream diff of
+# new version (~ynh1), release asset URL and its sha256 (taken only after
+# `gh attestation verify` passed), plus the upstream diff of
 # the files the package depends on. Merging stays a person's call, after
 # reading the release notes and one install or upgrade on YunoHost.
 # Once the package is in the YunoHost catalog, YunoHost's own autoupdate bot
@@ -56,15 +57,21 @@ jobs:
             git switch "$branch"
             sha=$(sed -nE 's/^ *sha256 = "([0-9a-f]{64})"$/\1/p' manifest.toml)
           else
-            url="https://github.com/ulsklyc/yuvomi/archive/refs/tags/$tag.tar.gz"
+            asset="yuvomi-$new-dist.tar.gz"
+            url="https://github.com/ulsklyc/yuvomi/releases/download/$tag/$asset"
             # Into a file first: in a pipe a failed or cut-off download would
             # still hash, and the pull request would carry that wrong sha256.
-            curl -fsSL --retry 3 -o "$RUNNER_TEMP/source.tar.gz" "$url"
-            gzip -t "$RUNNER_TEMP/source.tar.gz"
-            sha=$(sha256sum "$RUNNER_TEMP/source.tar.gz" | cut -d' ' -f1)
+            # curl -f: a release without the asset (404) ends the run, no pull request.
+            curl -fsSL --retry 3 -o "$RUNNER_TEMP/$asset" "$url" \
+              || { echo "Release $tag has no asset $asset, no pull request."; exit 1; }
+            gzip -t "$RUNNER_TEMP/$asset"
+            # The asset must come from the Yuvomi release workflow (Sigstore
+            # build provenance) before its hash goes into the manifest.
+            gh attestation verify "$RUNNER_TEMP/$asset" --repo ulsklyc/yuvomi
+            sha=$(sha256sum "$RUNNER_TEMP/$asset" | cut -d' ' -f1)
             sed -i -E \
               -e "s|^version = \"[^\"]+\"$|version = \"$new~ynh1\"|" \
-              -e "s|^( *url = \"https://github.com/ulsklyc/yuvomi/archive/refs/tags/)v[0-9.]+(\.tar\.gz\")$|\1$tag\2|" \
+              -e "s|^( *url = \"https://github.com/ulsklyc/yuvomi/releases/download/)v[0-9.]+(/yuvomi-)[0-9.]+(-dist\.tar\.gz\")$|\1$tag\2$new\3|" \
               -e "s|^( *sha256 = \")[0-9a-f]{64}(\")$|\1$sha\2|" \
               manifest.toml
             # Version, URL and hash: exactly three lines, or the manifest changed shape.
@@ -79,7 +86,7 @@ jobs:
 
           body="$RUNNER_TEMP/body.md"
           cat > "$body" <<BODY
-          Bumps the package from Yuvomi $current to [$new](https://github.com/ulsklyc/yuvomi/releases/tag/$tag): version \`$new~ynh1\`, tarball URL, sha256 \`$sha\`.
+          Bumps the package from Yuvomi $current to [$new](https://github.com/ulsklyc/yuvomi/releases/tag/$tag): version \`$new~ynh1\`, release asset URL, sha256 \`$sha\`.
 
           Before merging:
           - Read the release notes of every Yuvomi release since $current for changes to environment variables, secrets, Node or the files the server needs (\`scripts/_common.sh\` mirrors the upstream \`.dockerignore\`).

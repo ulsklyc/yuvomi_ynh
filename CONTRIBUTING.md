@@ -8,7 +8,7 @@ YunoHost app. Changes go in through pull requests; questions about Yuvomi itself
 
 ## Hard Constraints
 
-- **No Yuvomi code, no patches.** The package installs the official release tarball named in
+- **No Yuvomi code, no patches.** The package installs the official release asset (`yuvomi-<version>-dist.tar.gz`, attested) named in
   `manifest.toml` and only adds YunoHost's scripts and config templates. A change Yuvomi needs
   goes upstream.
 - **The package version is the Yuvomi version plus a revision**, e.g. `2.85.0~ynh1`. A new Yuvomi
@@ -73,8 +73,9 @@ Same rules as [Yuvomi](https://github.com/ulsklyc/yuvomi/blob/main/CONTRIBUTING.
   `chore: bump Yuvomi to 2.85.0`. The subject says what is true after the change, lowercase, no
   period, max 72 characters.
 - One logical change per pull request; pull requests are squash-merged.
-- **New Yuvomi release** - the Bump workflow opens the pull request with version, tarball URL and
-  sha256, the upstream diff of the files the package depends on (`env-schema.js`, `.dockerignore`,
+- **New Yuvomi release** - the Bump workflow opens the pull request with version, asset URL and
+  sha256 (only after `gh attestation verify` passed), the upstream diff of the files the package
+  depends on (`env-schema.js`, `.dockerignore`,
   `package.json`, `entrypoint.sh`, `auto-secrets.js`), and starts the linter on it. Read that diff
   and the release notes since the last bump for changes to environment variables, secrets, Node or
   the files the server needs, and test it on YunoHost before merging.
