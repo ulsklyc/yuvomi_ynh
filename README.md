@@ -90,7 +90,8 @@ Admin notes (key, backups, configuration, logs) are in [doc/ADMIN.md](doc/ADMIN.
 
 ## How it works
 
-The package downloads the Yuvomi release tarball named in `manifest.toml` (checked by sha256),
+The package downloads the Yuvomi release asset (`yuvomi-<version>-dist.tar.gz`) named in
+`manifest.toml` (checked by sha256; the asset carries a GitHub build provenance attestation),
 installs the runtime dependencies with npm and removes what the server never reads, the same list
 the official container image leaves out. Yuvomi itself runs unchanged, and this repository contains
 no Yuvomi code.
@@ -114,7 +115,8 @@ The package version is the Yuvomi version plus a package revision, e.g. `2.85.0~
 <br>
 
 - **New Yuvomi release** - the [Bump workflow](.github/workflows/bump.yml) checks for a new release
-  every day and opens one pull request with the new version, tarball URL, sha256 and the upstream
+  every day and opens one pull request with the new version, asset URL, sha256 (taken only after
+  `gh attestation verify` passed) and the upstream
   diff of the files the package depends on. Before merging, read that diff and the Yuvomi release
   notes for changes to environment variables, secrets, Node or the
   files the server needs, and install or upgrade once on a YunoHost server.
