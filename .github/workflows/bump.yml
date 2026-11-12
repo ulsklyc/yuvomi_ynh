@@ -3,7 +3,8 @@ name: Bump Yuvomi
 # Opens one pull request when Yuvomi has a release newer than manifest.toml:
 # new version (~ynh1), release asset URL and its sha256 (taken only after
 # `gh attestation verify` passed), plus the upstream diff of
-# the files the package depends on. Merging stays a person's call, after
+# the files the package depends on. An older bump that is still open is closed
+# in favour of the new one. Merging stays a person's call, after
 # reading the release notes and one install or upgrade on YunoHost.
 # Once the package is in the YunoHost catalog, YunoHost's own autoupdate bot
 # (autoupdate.strategy in manifest.toml) does this, and this workflow goes.
@@ -95,6 +96,17 @@ jobs:
           BODY
           cat "$RUNNER_TEMP/upstream.md" >> "$body"
           gh pr create --base main --head "$branch" --title "$title" --body-file "$body"
+
+          # An older bump that was never merged is superseded: the new pull
+          # request starts from main and carries every release since. Only
+          # bump branches of this repository, never a pull request from a fork.
+          number=$(gh pr view "$branch" --json number --jq .number)
+          gh pr list --state open --json number,headRefName,isCrossRepository \
+            --jq '.[] | select(.isCrossRepository | not) | select(.headRefName | startswith("bump/")) | "\(.number) \(.headRefName)"' \
+            | while read -r old head; do
+                [ "$head" = "$branch" ] && continue
+                gh pr close "$old" --delete-branch --comment "Superseded by #$number, which bumps to $new."
+              done
 
           # A pull request opened with GITHUB_TOKEN starts no pull_request
           # workflows, so the linter is started by hand on the branch
