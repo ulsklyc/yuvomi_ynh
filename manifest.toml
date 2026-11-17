@@ -8,7 +8,7 @@ description.en = "Privacy-focused family planner: calendar, tasks, shopping, mea
 description.de = "Datenschutzfreundlicher Familienplaner: Kalender, Aufgaben, Einkauf, Essen, Budget und mehr"
 description.fr = "Planificateur familial respectueux de la vie privée : agenda, tâches, courses, repas, budget"
 
-version = "2.91.0~ynh1"
+version = "2.91.1~ynh1"
 
 maintainers = ["ulsklyc"]
 
@@ -57,8 +57,8 @@ ram.runtime = "200M"
 [resources]
     [resources.sources]
         [resources.sources.main]
-        url = "https://github.com/ulsklyc/yuvomi/releases/download/v2.91.0/yuvomi-2.91.0-dist.tar.gz"
-        sha256 = "59a9cbb9747a6da2337f806974313c4164f0d5eead15c8834fb839a25d8b4c1e"
+        url = "https://github.com/ulsklyc/yuvomi/releases/download/v2.91.1/yuvomi-2.91.1-dist.tar.gz"
+        sha256 = "083f3417a21220025f1127c35d2225c5f896ecac10cda097343623cc63732d07"
         autoupdate.strategy = "latest_github_release"
         autoupdate.asset = "yuvomi-.*-dist\\.tar\\.gz"
 
